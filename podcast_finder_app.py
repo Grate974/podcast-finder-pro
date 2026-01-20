@@ -95,14 +95,16 @@ def search_by_term(api_key, api_secret, search_term):
     except Exception as e:
         return [], f"Connection Error: {str(e)}"
 
-def filter_podcasts(podcasts, min_episodes, max_days_since_post, languages, 
-                   exclude_explicit, categories_filter):
-    """Filter podcasts based on criteria"""
+def filter_podcasts(podcasts, min_episodes, max_days_since_post, created_within_days,
+                   languages, exclude_explicit, categories_filter, country_filter):
+    """Filter podcasts based on Jaquory's criteria"""
     cutoff_timestamp = int((datetime.now() - timedelta(days=max_days_since_post)).timestamp())
+    created_cutoff = int((datetime.now() - timedelta(days=created_within_days)).timestamp()) if created_within_days > 0 else 0
+    
     filtered = []
     
     for podcast in podcasts:
-        # Episode count filter
+        # Amount of posts (episode count filter)
         episode_count = podcast.get('episodeCount', 0)
         if episode_count < min_episodes:
             continue
@@ -117,10 +119,28 @@ def filter_podcasts(podcasts, min_episodes, max_days_since_post, languages,
         if exclude_explicit and podcast.get('explicit', False):
             continue
         
-        # Last update time filter
+        # Date of last post filter
         last_update = podcast.get('lastUpdateTime', 0)
         if last_update < cutoff_timestamp:
             continue
+        
+        # When podcast was created filter
+        if created_within_days > 0:
+            date_added = podcast.get('dateAdded', 0)
+            if date_added > 0 and date_added < created_cutoff:
+                continue
+        
+        # Country filter (basic - based on language codes)
+        if country_filter != 'Any':
+            podcast_language = podcast.get('language', '').lower()
+            if country_filter == 'US' and 'en-us' not in podcast_language and podcast_language != 'en':
+                continue
+            elif country_filter == 'UK' and 'en-gb' not in podcast_language:
+                continue
+            elif country_filter == 'Canada' and 'en-ca' not in podcast_language:
+                continue
+            elif country_filter == 'Australia' and 'en-au' not in podcast_language:
+                continue
         
         # Category filter
         if categories_filter:
@@ -180,56 +200,107 @@ def main():
         
         st.markdown("---")
         
-        # Search Options
-        st.subheader("🔍 Search Method")
-        search_method = st.radio("How to search?", ["Recent Active Podcasts", "Search by Keyword"])
-        
-        if search_method == "Search by Keyword":
-            search_term = st.text_input("Search Term", placeholder="business, technology...")
-        else:
-            search_term = None
-            st.info("Will search podcasts updated in the last year, then filter by your criteria below.")
+        # Search
+        st.subheader("🔍 Search")
+        search_term = st.text_input(
+            "Search Term", 
+            placeholder="business, technology, health...",
+            help="Search for podcasts by keyword, topic, or category"
+        )
         
         st.markdown("---")
         
-        # Filters
+        # Filters - Jaquory's Requirements
         st.subheader("🎯 Filters")
-        min_episodes = st.slider("Minimum Episodes", 1, 500, 15)
-        max_days_since_post = st.slider("Posted Within Last X Days", 7, 365, 30)
-        languages = st.multiselect("Languages", ['en', 'es', 'fr', 'de', 'pt', 'it', 'ja', 'zh'], default=['en'])
+        
+        # Amount of posts (episodes)
+        min_episodes = st.slider(
+            "Minimum Episodes",
+            min_value=1,
+            max_value=500,
+            value=15,
+            help="Amount of posts - minimum episode count"
+        )
+        
+        # Date of last post
+        max_days_since_post = st.slider(
+            "Posted Within Last X Days",
+            min_value=1,
+            max_value=365,
+            value=30,
+            help="Date of last post - only show podcasts that posted recently"
+        )
+        
+        # When podcast was created
+        created_within_days = st.slider(
+            "Created Within Last X Days (Optional)",
+            min_value=0,
+            max_value=3650,
+            value=365,
+            help="When the podcast was created - 0 means no filter"
+        )
+        
+        # Location filter
+        country_filter = st.selectbox(
+            "Country (Optional)",
+            options=['Any', 'US', 'UK', 'Canada', 'Australia'],
+            index=0,
+            help="Filter by country - based on language and metadata"
+        )
+        
+        # Language
+        languages = st.multiselect(
+            "Languages",
+            options=['en', 'en-us', 'es', 'fr', 'de', 'pt', 'it'],
+            default=['en', 'en-us'],
+            help="Podcast language"
+        )
+        
+        # Additional filters
         exclude_explicit = st.checkbox("Exclude Explicit Content", value=False)
         
-        categories_input = st.text_input("Categories (comma-separated)", placeholder="business, technology")
+        categories_input = st.text_input(
+            "Categories (comma-separated, optional)",
+            placeholder="sports, business, technology",
+            help="Filter by categories - leave empty for all"
+        )
         categories_filter = [cat.strip() for cat in categories_input.split(',')] if categories_input else []
         
-        max_results = st.slider("Max Results", 100, 1000, 1000, 100)
+        max_results = st.slider("Max Results to Fetch", 100, 1000, 1000, 100)
         
         st.markdown("---")
         search_button = st.button("🔍 Search Podcasts", type="primary")
     
     # Main Content
     if search_button:
+        if not search_term or not search_term.strip():
+            st.error("⚠️ Please enter a search term (e.g., business, technology, sports)")
+            st.stop()
+        
         with st.spinner("🔍 Searching..."):
-            if search_method == "Search by Keyword" and search_term:
-                podcasts, error = search_by_term(api_key, api_secret, search_term)
-                info = f"Keyword: '{search_term}'"
-            else:
-                # Always search for 1 year of data, then filter
-                podcasts, error = search_podcasts(api_key, api_secret, max_results, 365)
-                info = f"Searching last year of podcasts"
+            podcasts, error = search_by_term(api_key, api_secret, search_term)
             
             if error:
                 st.error(f"❌ {error}")
                 st.stop()
             
             if not podcasts:
-                st.warning("⚠️ No podcasts found")
+                st.warning(f"⚠️ No podcasts found for '{search_term}'")
                 st.stop()
             
-            st.success(f"✅ Found {len(podcasts)} podcasts ({info})")
+            st.success(f"✅ Found {len(podcasts)} podcasts for '{search_term}'")
         
         with st.spinner("🎯 Filtering..."):
-            filtered = filter_podcasts(podcasts, min_episodes, max_days_since_post, languages, exclude_explicit, categories_filter)
+            filtered = filter_podcasts(
+                podcasts, 
+                min_episodes, 
+                max_days_since_post,
+                created_within_days,
+                languages, 
+                exclude_explicit, 
+                categories_filter,
+                country_filter
+            )
             
             if not filtered:
                 st.warning("⚠️ No matches. Relax filters.")
@@ -272,20 +343,70 @@ def main():
             )
     else:
         st.info("""
-        ### 👋 Welcome!
+        ### 👋 Welcome to Podcast Finder Pro!
         
-        1. Enter API credentials
-        2. Choose search method
-        3. Set filters
-        4. Click Search
-        5. Download results!
+        **Built for Jaquory's Podcast Outreach**
+        
+        **How to use:**
+        1. Enter your API credentials in the sidebar
+        2. Enter a search term (business, technology, sports, etc.)
+        3. Set your filters:
+           - Amount of posts (minimum episodes)
+           - Date of last post (posted within X days)
+           - When podcast was created
+           - Country/Language
+        4. Click "Search Podcasts"
+        5. Download CSV for your outreach!
+        
+        **Example Query:**
+        _"Show me podcasts that released in the last year, based in the US, 
+        that have over 15 episodes and have posted in the last 30 days"_
+        
+        **Settings for this:**
+        - Search Term: `business` (or any niche)
+        - Minimum Episodes: `15`
+        - Posted Within Last: `30` days
+        - Created Within Last: `365` days
+        - Country: `US`
+        - Languages: `en, en-us`
         
         **Why this is better than ListenNotes:**
-        - Free
-        - More control
-        - Better UX
-        - Direct API access
+        - ✅ Free API access
+        - ✅ Exact filters you need
+        - ✅ Clean, simple UI
+        - ✅ Direct CSV export
+        - ✅ No subscription required
+        
+        Ready to find leads? Enter a search term and start! 🚀
         """)
+        
+        st.markdown("---")
+        st.subheader("💡 Search Tips")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **Good Search Terms:**
+            - business
+            - entrepreneurship
+            - technology
+            - marketing
+            - investing
+            - real estate
+            - health
+            - fitness
+            """)
+        
+        with col2:
+            st.markdown("""
+            **Pro Tips:**
+            - Start broad, refine with filters
+            - Try different search terms
+            - Set "Created Within" to 0 for all podcasts
+            - US podcasts usually use "en" or "en-us"
+            - Download and combine multiple searches!
+            """)
     
     st.markdown("---")
     st.markdown("<div style='text-align: center; color: #666;'>🎙️ Podcast Finder Pro | Powered by Podcast Index</div>", unsafe_allow_html=True)
