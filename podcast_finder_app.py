@@ -188,15 +188,22 @@ def main():
     with st.sidebar:
         st.header("⚙️ Configuration")
         
-        # API Credentials
-        st.subheader("🔑 API Credentials")
-        api_key = st.text_input("API Key", type="password", help="Get from https://api.podcastindex.org/")
-        api_secret = st.text_input("API Secret", type="password")
-        
-        if not api_key or not api_secret:
-            st.warning("⚠️ Enter API credentials")
-            st.markdown("[Get Free API Key →](https://api.podcastindex.org/)")
-            st.stop()
+        # Try to load API credentials from secrets
+        try:
+            api_key = st.secrets["podcast_index"]["api_key"]
+            api_secret = st.secrets["podcast_index"]["api_secret"]
+            st.success("✅ Using stored credentials")
+        except:
+            # Fallback to user input if secrets not available
+            st.subheader("🔑 API Credentials")
+            st.info("Enter your Podcast Index API credentials")
+            api_key = st.text_input("API Key", type="password", help="Get from https://api.podcastindex.org/")
+            api_secret = st.text_input("API Secret", type="password")
+            
+            if not api_key or not api_secret:
+                st.warning("⚠️ Enter API credentials")
+                st.markdown("[Get Free API Key →](https://api.podcastindex.org/)")
+                st.stop()
         
         st.markdown("---")
         
