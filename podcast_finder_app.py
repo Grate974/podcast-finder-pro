@@ -52,9 +52,10 @@ def get_podcast_index_headers(api_key, api_secret):
         'User-Agent': 'PodcastFinderPro/1.0'
     }
 
-def search_podcasts(api_key, api_secret, max_results=1000, days_back=90):
-    """Search for podcasts from Podcast Index"""
+def search_podcasts(api_key, api_secret, max_results=1000, days_back=365):
+    """Search for podcasts from Podcast Index - always search wide, filter later"""
     base_url = "https://api.podcastindex.org/api/1.0"
+    # Always search for a wide timeframe (1 year) and filter later
     since_timestamp = int((datetime.now() - timedelta(days=days_back)).timestamp())
     
     url = f"{base_url}/recent/feeds"
@@ -187,7 +188,7 @@ def main():
             search_term = st.text_input("Search Term", placeholder="business, technology...")
         else:
             search_term = None
-            days_back = st.slider("Updated in last X days", 7, 365, 90)
+            st.info("Will search podcasts updated in the last year, then filter by your criteria below.")
         
         st.markdown("---")
         
@@ -213,8 +214,9 @@ def main():
                 podcasts, error = search_by_term(api_key, api_secret, search_term)
                 info = f"Keyword: '{search_term}'"
             else:
-                podcasts, error = search_podcasts(api_key, api_secret, max_results, days_back)
-                info = f"Updated in last {days_back} days"
+                # Always search for 1 year of data, then filter
+                podcasts, error = search_podcasts(api_key, api_secret, max_results, 365)
+                info = f"Searching last year of podcasts"
             
             if error:
                 st.error(f"❌ {error}")
