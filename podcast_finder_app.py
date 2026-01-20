@@ -181,7 +181,7 @@ def extract_podcast_data(podcasts):
 # Main App
 def main():
     st.title("🎙️ Podcast Finder Pro")
-    st.markdown("### Better than ListenNotes - Find Your Perfect Podcast Leads")
+    st.markdown("### Find Your Perfect Podcast Leads")
     st.markdown("---")
     
     # Sidebar
