@@ -1,6 +1,6 @@
 """
 🎙️ PODCAST FINDER PRO
-Better than ListenNotes - Built for Podcast Outreach
+Built for Podcast Outreach
 
 A beautiful web app to find and filter podcasts using Podcast Index API
 No coding required - just use the filters and download your results!
@@ -352,18 +352,17 @@ def main():
         st.info("""
         ### 👋 Welcome to Podcast Finder Pro!
         
-        **Built for Jaquory's Podcast Outreach**
+        **Built for Podcast Outreach**
         
         **How to use:**
-        1. Enter your API credentials in the sidebar
-        2. Enter a search term (business, technology, sports, etc.)
-        3. Set your filters:
+        1. Enter a search term (business, technology, sports, etc.)
+        2. Set your filters:
            - Amount of posts (minimum episodes)
            - Date of last post (posted within X days)
            - When podcast was created
            - Country/Language
-        4. Click "Search Podcasts"
-        5. Download CSV for your outreach!
+        3. Click "Search Podcasts"
+        4. Download CSV for your outreach!
         
         **Example Query:**
         _"Show me podcasts that released in the last year, based in the US, 
@@ -377,14 +376,8 @@ def main():
         - Country: `US`
         - Languages: `en, en-us`
         
-        **Why this is better than ListenNotes:**
-        - ✅ Free API access
-        - ✅ Exact filters you need
-        - ✅ Clean, simple UI
-        - ✅ Direct CSV export
-        - ✅ No subscription required
-        
-        Ready to find leads? Enter a search term and start! 🚀
+    
+        Ready to find a podcast? Enter a search term and start! 🚀
         """)
         
         st.markdown("---")
